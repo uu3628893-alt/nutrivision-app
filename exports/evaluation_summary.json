@@ -1,0 +1,45 @@
+{
+    "project_title": "Nutritional Analysis and Personalised Dietary Recommendation System",
+    "configuration": {
+        "seed": 42,
+        "data_dir": "./Data",
+        "foodseg_parquet_dir": "./Data/FoodSeg103",
+        "usda_csv_dir": "./Data/FoodData_Central_survey_food",
+        "output_dir": "./outputs",
+        "checkpoint_dir": "./outputs/checkpoints",
+        "figures_dir": "./outputs/figures",
+        "export_dir": "./outputs/exports",
+        "image_height": 512,
+        "image_width": 512,
+        "num_classes": 104,
+        "ignore_index": 255,
+        "batch_size": 8,
+        "learning_rate": 0.0001,
+        "weight_decay": 0.0001,
+        "num_epochs": 10,
+        "patience": 3,
+        "num_workers": 2,
+        "quick_test": false,
+        "quick_test_samples": 100,
+        "device": "cuda"
+    },
+    "model_selection": "DeepLabV3+ (ResNet-50)",
+    "unet_test_metrics": {
+        "mIoU": 0.09714447446657484,
+        "Dice Coefficient": 0.13381285242056243,
+        "Pixel Accuracy": 0.6838192459570999,
+        "Precision": 0.37816503393298434,
+        "Recall": 0.15304354723166552,
+        "Macro F1": 0.21790204147563685,
+        "Inference Latency (ms)": 12.893402126780673
+    },
+    "deeplab_test_metrics": {
+        "mIoU": 0.2318770304430733,
+        "Dice Coefficient": 0.3166953012584658,
+        "Pixel Accuracy": 0.7423339414931572,
+        "Precision": 0.5261532796236614,
+        "Recall": 0.3226528474850793,
+        "Macro F1": 0.4000085448544274,
+        "Inference Latency (ms)": 11.774143811022297
+    }
+}

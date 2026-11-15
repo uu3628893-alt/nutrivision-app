@@ -1,0 +1,22 @@
+# Large training dataset (1.25GB) not needed by runtime web application
+Data/FoodSeg103/
+Data/FoodSeg103/**
+
+# Python cache & virtual environment
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.log
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# User uploads / temporary files
+Web_app/assets/uploaded_meals/*
+!Web_app/assets/uploaded_meals/.gitkeep
+Web_app/reports/*
+!Web_app/reports/.gitkeep
+
+# Windows batch files
+launch_live.bat

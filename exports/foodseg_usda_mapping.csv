@@ -1,0 +1,104 @@
+class_id,foodseg_name,usda_fdc_id,usda_description,similarity_score,mapping_status,approved
+1,candy,2710325,"Candy, NFS",0.9833,Auto-Matched,True
+2,egg tart,2706394,Steak tartare,0.7714,Auto-Matched,False
+3,french fries,2709456,"Potato, french fries, NFS",0.7946,Auto-Matched,False
+4,chocolate,2710294,Chocolate dip,0.9636,Auto-Matched,True
+5,biscuit,2707801,"Biscuit, NFS",0.9868,Auto-Matched,True
+6,popcorn,2708216,"Popcorn, NFS",0.9868,Auto-Matched,True
+7,pudding,2705685,"Pudding, rice",0.985,Auto-Matched,True
+8,ice cream,2705629,"Ice cream, NFS",0.9891,Auto-Matched,True
+9,cheese butter,2707536,Cashew butter,0.8308,Auto-Matched,False
+10,cake,2707872,"Cake, cream",0.9767,Auto-Matched,True
+11,wine,2710688,"Wine, red",0.9808,Auto-Matched,True
+12,milkshake,2705507,Milk shake with malt,0.6207,Review-Required,False
+13,coffee,2710381,"Coffee, Cuban",0.9816,Auto-Matched,True
+14,juice,2709682,Beet juice,0.9333,Auto-Matched,True
+15,milk,2705384,"Milk, NFS",0.9808,Auto-Matched,True
+16,tea,2710507,"Tea, ginger",0.9714,Auto-Matched,True
+17,almond,2710181,Almond oil,0.95,Auto-Matched,True
+18,red beans,2707396,Refried beans,0.8455,Auto-Matched,False
+19,cashew,2707536,Cashew butter,0.9263,Auto-Matched,True
+20,dried cranberries,2709279,"Cranberries, raw",0.8,Auto-Matched,False
+21,soy,2707433,Soy nuts,0.9091,Auto-Matched,True
+22,walnut,2710193,Walnut oil,0.95,Auto-Matched,True
+23,peanut,2710187,Peanut oil,0.95,Auto-Matched,True
+24,egg,2707179,"Egg, whole, boiled",1.0,Verified,True
+25,apple,2709215,"Apple, raw",1.0,Verified,True
+26,date,2709203,Date,1.0,Auto-Matched,True
+27,apricot,2709221,"Apricot, raw",0.9868,Auto-Matched,True
+28,avocado,2709223,"Avocado, raw",0.9868,Auto-Matched,True
+29,banana,2709224,"Banana, raw",1.0,Verified,True
+30,strawberry,2708003,"Pie, strawberry",0.96,Auto-Matched,True
+31,cherry,2707999,"Pie, cherry",0.9412,Auto-Matched,True
+32,blueberry,2707998,"Pie, blueberry",0.9565,Auto-Matched,True
+33,raspberry,2708026,"Crisp, berry",0.7619,Auto-Matched,False
+34,mango,2709242,"Mango, raw",0.9833,Auto-Matched,True
+35,olives,2710088,"Olives, NFS",0.9853,Auto-Matched,True
+36,peach,2709249,"Peach, raw",0.9833,Auto-Matched,True
+37,lemon,2709168,"Lemon, raw",0.9833,Auto-Matched,True
+38,pear,2709254,"Pear, raw",0.9808,Auto-Matched,True
+39,fig,2709235,"Fig, raw",0.9773,Auto-Matched,True
+40,pineapple,2709260,"Pineapple, raw",0.9891,Auto-Matched,True
+41,grape,2709325,"Grape juice, 100%",0.8909,Auto-Matched,True
+42,kiwi,2709239,"Kiwi fruit, raw",0.8842,Auto-Matched,True
+43,melon,2709227,"Melon, frozen",0.9778,Auto-Matched,True
+44,orange,2709171,"Orange, raw",0.9853,Auto-Matched,True
+45,watermelon,2709270,"Watermelon, raw",0.99,Auto-Matched,True
+46,steak,2705823,"Beef steak, cooked",1.0,Verified,True
+47,pork,2705862,"Pork, NFS",0.9808,Auto-Matched,True
+48,chicken duck,2706312,"Chicken breast, roasted",1.0,Verified,True
+49,sausage,2706190,"Sausage, NFS",0.9868,Auto-Matched,True
+50,fried meat,2710048,Fried eggplant,0.825,Auto-Matched,False
+51,lamb,2705906,"Lamb, chop",0.9786,Auto-Matched,True
+52,sauce,2710177,"Sauce, NFS",0.9833,Auto-Matched,True
+53,crab,2706344,Crab,1.0,Auto-Matched,True
+54,fish,2706223,"Fish, raw",0.9808,Auto-Matched,True
+55,shellfish,2706336,"Shellfish, NFS",0.9891,Auto-Matched,True
+56,shrimp,2706360,"Shrimp, NFS",0.9853,Auto-Matched,True
+57,soup,2709144,"Soup, NFS",0.9808,Auto-Matched,True
+58,bread,2707755,"Bread, white",1.0,Verified,True
+59,corn,2709783,"Corn, raw",0.9808,Auto-Matched,True
+60,hamburg,2706920,"Hamburger, NFS",0.8,Auto-Matched,False
+61,pizza,2708618,"Pizza, cheese, stuffed crust",0.9652,Auto-Matched,True
+62,hanamaki baozi,2710677,Mai Tai,0.5714,Review-Required,False
+63,wonton dumplings,2708705,"Wonton, dumpling or pot sticker, fried",0.7778,Auto-Matched,False
+64,pasta,2708357,"Pasta, cooked",0.9778,Auto-Matched,True
+65,noodles,2708352,"Noodles, cooked",0.9818,Auto-Matched,True
+66,rice,2708952,"Rice, white, cooked",1.0,Verified,True
+67,pie,2707993,"Pie, NFS",0.9773,Auto-Matched,True
+68,tofu,2707455,"Soup, miso or tofu",0.8727,Auto-Matched,True
+69,eggplant,2709785,"Eggplant, raw",0.9881,Auto-Matched,True
+70,potato,2709456,"Potato, baked",1.0,Verified,True
+71,garlic,2709786,"Garlic, raw",0.9853,Auto-Matched,True
+72,cauliflower,2709777,"Cauliflower, raw",0.9907,Auto-Matched,True
+73,tomato,2710123,"Tomato, raw",1.0,Verified,True
+74,kelp,2709733,Ketchup,0.5455,Review-Required,False
+75,seaweed,2709805,"Seaweed, raw",0.9868,Auto-Matched,True
+76,spring onion,2710108,"Soup, French onion",0.8,Auto-Matched,False
+77,rape,2709237,"Grapes, raw",0.76,Auto-Matched,False
+78,ginger,2710507,"Tea, ginger",0.9412,Auto-Matched,True
+79,okra,2710087,"Okra, pickled",0.9735,Auto-Matched,True
+80,lettuce,2709789,"Lettuce, raw",0.9868,Auto-Matched,True
+81,pumpkin,2709692,"Pumpkin, cooked",0.9818,Auto-Matched,True
+82,cucumber,2709784,"Cucumber, raw",0.9881,Auto-Matched,True
+83,white radish,2710083,Horseradish,0.8087,Auto-Matched,False
+84,carrot,2707845,"Muffin, carrot",0.92,Auto-Matched,True
+85,asparagus,2709767,"Asparagus, raw",0.9891,Auto-Matched,True
+86,bamboo shoots,2709847,"Bamboo shoots, cooked",0.9882,Auto-Matched,True
+87,broccoli,2709845,"Broccoli, raw",1.0,Verified,True
+88,celery stick,2709811,Celery juice,0.825,Auto-Matched,False
+89,cilantro mint,2709782,"Cilantro, raw",0.8077,Auto-Matched,False
+90,snow peas,2709806,"Snowpeas, raw",0.8182,Auto-Matched,False
+91,cabbage,2709775,"Cabbage, red, raw",0.9792,Auto-Matched,True
+92,bean sprouts,2709768,"Bean sprouts, raw",0.9914,Auto-Matched,True
+93,onion,2707633,"Bread, onion",0.9176,Auto-Matched,True
+94,pepper,2710253,"Pepper, for use on a sandwich",0.9671,Auto-Matched,True
+95,green beans,2709769,"Green beans, raw",0.9907,Auto-Matched,True
+96,French beans,2707396,Refried beans,0.816,Auto-Matched,False
+97,king oyster mushroom,2710053,Fried mushrooms,0.7886,Auto-Matched,False
+98,shiitake,2706276,"Fish, pike",0.5556,Review-Required,False
+99,enoki mushroom,2710053,Fried mushrooms,0.8069,Auto-Matched,False
+100,oyster mushroom,2710053,Fried mushrooms,0.8,Auto-Matched,False
+101,white button mushroom,2710053,Fried mushrooms,0.7833,Auto-Matched,False
+102,salad,2710056,Pea salad,0.9429,Auto-Matched,True
+103,other ingredients,2710808,Other vegetables as ingredient in omelet,0.7684,Auto-Matched,False
