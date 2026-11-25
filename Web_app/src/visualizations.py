@@ -22,7 +22,7 @@ def plot_macronutrient_donut(macro_energy_pct: Dict[str, float], title: str = "M
     labels = ['Protein', 'Carbohydrates', 'Total Fat']
     values = [
         macro_energy_pct.get('protein_pct', 0.0),
-        macro_energy_pct.get('carb_pct', 0.0),
+        macro_energy_pct.get('carbs_pct', macro_energy_pct.get('carb_pct', 0.0)),
         macro_energy_pct.get('fat_pct', 0.0)
     ]
     colors = [PALETTE['protein'], PALETTE['carbs'], PALETTE['fat']]
@@ -82,16 +82,28 @@ def plot_nutrient_comparison_bar(actual: Dict[str, float], targets: Dict[str, fl
     return fig
 
 
-def plot_amdr_comparison(actual_pct: Dict[str, float], amdr_ranges: Dict[str, tuple]) -> go.Figure:
+def plot_amdr_comparison(actual_pct: Dict[str, float], amdr_ranges: Dict[str, Any]) -> go.Figure:
     # Visualize actual macronutrient percentages against WHO/IOM AMDR acceptable ranges
     macros = ['Protein', 'Carbohydrates', 'Fat']
     actual_vals = [
         actual_pct.get('protein_pct', 0.0),
-        actual_pct.get('carb_pct', 0.0),
+        actual_pct.get('carbs_pct', actual_pct.get('carb_pct', 0.0)),
         actual_pct.get('fat_pct', 0.0)
     ]
-    min_vals = [amdr_ranges['protein'][0], amdr_ranges['carbs'][0], amdr_ranges['fat'][0]]
-    max_vals = [amdr_ranges['protein'][1], amdr_ranges['carbs'][1], amdr_ranges['fat'][1]]
+
+    def _extract_bounds(val):
+        if isinstance(val, dict):
+            return float(val.get('min', 0.0)), float(val.get('max', 100.0))
+        elif isinstance(val, (list, tuple)):
+            return float(val[0]), float(val[1])
+        return 0.0, 100.0
+
+    p_min, p_max = _extract_bounds(amdr_ranges.get('protein', (10.0, 35.0)))
+    c_min, c_max = _extract_bounds(amdr_ranges.get('carbs', (45.0, 65.0)))
+    f_min, f_max = _extract_bounds(amdr_ranges.get('fat', (20.0, 35.0)))
+
+    min_vals = [p_min, c_min, f_min]
+    max_vals = [p_max, c_max, f_max]
 
     fig = go.Figure()
 
