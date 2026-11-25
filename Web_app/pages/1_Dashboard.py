@@ -112,12 +112,18 @@ else:
 
     c_chart1, c_chart2 = st.columns(2)
     with c_chart1:
-        fig_donut = visualizations.plot_macronutrient_donut(macro_pct, "Observed Caloric Distribution (%)")
-        st.plotly_chart(fig_donut, use_container_width=True)
+        try:
+            fig_donut = visualizations.plot_macronutrient_donut(macro_pct, "Observed Caloric Distribution (%)")
+            st.plotly_chart(fig_donut, use_container_width=True)
+        except Exception:
+            pass
 
     with c_chart2:
-        fig_amdr = visualizations.plot_amdr_comparison(macro_pct, config.AMDR_RANGES)
-        st.plotly_chart(fig_amdr, use_container_width=True)
+        try:
+            fig_amdr = visualizations.plot_amdr_comparison(macro_pct, config.AMDR_RANGES)
+            st.plotly_chart(fig_amdr, use_container_width=True)
+        except Exception:
+            pass
 
     # Longitudinal Daily Intake Trend
     st.markdown("### Longitudinal Daily Energy Intake")
