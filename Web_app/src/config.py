@@ -2,13 +2,53 @@
 Configuration constants and global application parameters for NutriVision.
 """
 
+import os
+from typing import Optional, Dict, Any
 import numpy as np
 
 # Application Identity
 APP_NAME = "NutriVision"
-APP_TITLE = "NutriVision – AI-Powered Nutritional Analysis and Personalised Dietary Recommendation System"
-APP_ICON = "🥗"
-APP_VERSION = "1.0.0"
+APP_TITLE = "NutriVision - AI-Powered Nutritional Analysis and Personalised Dietary Recommendation System"
+APP_ICON = "N"
+APP_VERSION = "1.1.0"
+
+# LLM Configuration
+LLM_PROVIDER = "openai"
+LLM_DEFAULT_MODEL = "gpt-4o-mini"
+LLM_REQUEST_TIMEOUT = 15
+LLM_MAX_TOKENS = 700
+LLM_TEMPERATURE = 0.2
+
+def get_llm_api_key() -> Optional[str]:
+    # Check session state first (from UI input), then secrets, then environment variables
+    try:
+        import streamlit as st
+        if hasattr(st, "session_state") and "user_api_key" in st.session_state and st.session_state["user_api_key"]:
+            return str(st.session_state["user_api_key"]).strip()
+        if hasattr(st, "secrets"):
+            if "OPENAI_API_KEY" in st.secrets:
+                return str(st.secrets["OPENAI_API_KEY"]).strip()
+            if "LLM_API_KEY" in st.secrets:
+                return str(st.secrets["LLM_API_KEY"]).strip()
+    except Exception:
+        pass
+    env_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
+    if env_key:
+        return env_key.strip()
+    return None
+
+def get_llm_config() -> Dict[str, Any]:
+    api_key = get_llm_api_key()
+    model = os.environ.get("LLM_MODEL", LLM_DEFAULT_MODEL)
+    return {
+        "provider": LLM_PROVIDER,
+        "model": model,
+        "api_key": api_key,
+        "timeout": LLM_REQUEST_TIMEOUT,
+        "max_tokens": LLM_MAX_TOKENS,
+        "temperature": LLM_TEMPERATURE,
+        "is_configured": bool(api_key)
+    }
 
 # Computer Vision Configuration
 IMAGE_SIZE = (512, 512)

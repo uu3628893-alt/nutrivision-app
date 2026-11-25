@@ -17,8 +17,9 @@ from src import food_labels
 from src import visualizations
 from src import recommendation_engine
 from src import bmi_calculator
+from src import llm_recommendation
 
-st.set_page_config(page_title="Nutrition Analysis – NutriVision", page_icon="🥗", layout="wide")
+st.set_page_config(page_title="Nutrition Analysis - NutriVision", layout="wide")
 
 st.title("Nutritional Analysis & Portion Scaling")
 st.caption("Empirical USDA FNDDS 2021–2023 Nutrient Calculation and Personalized Assessment")
@@ -269,16 +270,81 @@ st.markdown("### Personalized Clinical & Dietary Recommendations")
 meal_cat = st.selectbox("Select Meal Occasion for Assessment:", ["Lunch", "Breakfast", "Dinner", "Snack"])
 
 if user_prof:
-    rec_results = recommendation_engine.generate_dietary_recommendations(meal_nutr, user_prof, meal_type=meal_cat.lower())
+    rule_results = recommendation_engine.generate_dietary_recommendations(meal_nutr, user_prof, meal_type=meal_cat.lower())
 
-    for alert in rec_results.get('alerts', []):
+    # Independent safety warnings always displayed upfront
+    for alert in rule_results.get('alerts', []):
         st.error(alert)
 
-    for rec in rec_results.get('recommendations', []):
-        st.warning(rec)
+    c_btn1, c_btn2 = st.columns([2, 1])
+    with c_btn1:
+        gen_llm_btn = st.button("Generate Personalised Dietary Recommendation", type="primary")
+    with c_btn2:
+        if st.button("Reset Recommendations"):
+            st.session_state['llm_recommendation_result'] = None
+            st.rerun()
 
-    for pos in rec_results.get('positive_feedback', []):
-        st.success(pos)
+    if gen_llm_btn:
+        with st.spinner("Generating personalized dietary recommendations..."):
+            st.session_state['llm_recommendation_result'] = llm_recommendation.generate_llm_recommendation(
+                meal_nutrition=meal_nutr,
+                user_profile=user_prof,
+                meal_type=meal_cat.lower()
+            )
+
+    rec_data = st.session_state.get('llm_recommendation_result')
+    if rec_data:
+        st.markdown("#### Meal Assessment")
+        st.write(rec_data.get("meal_assessment", ""))
+
+        st.markdown("#### Personalised Dietary Suggestions")
+        suggestions = rec_data.get("personalized_suggestions", [])
+        if isinstance(suggestions, list):
+            for s in suggestions:
+                st.info(s)
+        else:
+            st.info(suggestions)
+
+        st.markdown("#### Health Considerations")
+        health_items = rec_data.get("health_considerations", [])
+        if isinstance(health_items, list):
+            for h in health_items:
+                st.warning(h)
+        else:
+            st.warning(health_items)
+
+        st.markdown("#### Important Notices")
+        notices = rec_data.get("important_notices", [])
+        if isinstance(notices, list):
+            for n in notices:
+                st.caption(f"- {n}")
+        else:
+            st.caption(f"- {notices}")
+    else:
+        st.markdown("#### Meal Assessment")
+        cal_val = round(totals.get('calories_kcal', 0.0))
+        budget = rule_results.get('meal_calorie_budget', 0.0)
+        st.write(f"Estimated meal energy is {cal_val} kcal compared to your allocated {meal_cat.lower()} target of {round(budget)} kcal.")
+
+        st.markdown("#### Personalised Dietary Suggestions")
+        for rec in rule_results.get('recommendations', []):
+            st.warning(rec)
+        for pos in rule_results.get('positive_feedback', []):
+            st.success(pos)
+
+        st.markdown("#### Health Considerations")
+        if rule_results.get('health_notices'):
+            for hn in rule_results['health_notices']:
+                st.info(hn)
+        else:
+            st.write("No specific health conditions or clinical contraindications identified.")
+
+        st.markdown("#### Important Notices")
+        all_notices = list(rule_results.get('assumed_portions', []))
+        all_notices.append(rule_results.get('disclaimer', ''))
+        for n in all_notices:
+            if n:
+                st.caption(f"- {n}")
 else:
     st.info("Setup a user profile to generate personalised dietary recommendations.")
 

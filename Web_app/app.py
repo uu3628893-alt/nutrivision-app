@@ -9,6 +9,7 @@ if str(CURRENT_DIR) not in sys.path:
 
 import streamlit as st
 import torch
+from src import config
 from src import paths
 from src import database
 from src import model_loader
@@ -16,8 +17,7 @@ from src import nutrition_database
 
 # Page configuration
 st.set_page_config(
-    page_title="NutriVision – AI Nutritional Analysis",
-    page_icon="🥗",
+    page_title="NutriVision - AI Nutritional Analysis",
     layout="wide",
     initial_sidebar_state="expanded"
 )

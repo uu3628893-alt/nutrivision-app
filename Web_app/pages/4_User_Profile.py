@@ -10,7 +10,7 @@ import streamlit as st
 from src import database
 from src import bmi_calculator
 
-st.set_page_config(page_title="User Profile – NutriVision", page_icon="👤", layout="wide")
+st.set_page_config(page_title="User Profile - NutriVision", layout="wide")
 
 st.title("User Anthropometric Profile & Dietary Targets")
 st.caption("Mifflin-St Jeor Energy Expenditure, WHO BMI Classification, and AMDR Target Formulation")
@@ -19,10 +19,11 @@ user_prof = database.get_user_profile()
 
 st.markdown("### Profile Status")
 if user_prof:
+    health_ctx = f" | Health Considerations: {user_prof['health_conditions']}" if user_prof.get('health_conditions') else ""
     st.success(
         f"Active Profile: {user_prof['age']} yr old {user_prof['sex']}, "
         f"{user_prof['height_cm']:.1f} cm, {user_prof['weight_kg']:.1f} kg. "
-        f"Goal: {user_prof['goal'].title()} ({round(user_prof['target_calories'])} kcal/day)."
+        f"Goal: {user_prof['goal'].title()} ({round(user_prof['target_calories'])} kcal/day){health_ctx}."
     )
 else:
     st.info("No profile currently configured. Complete the form below to configure your biometric baseline.")
@@ -87,6 +88,26 @@ with st.form("profile_form"):
         current_prefs = [p.strip().lower() for p in user_prof['preferences'].split(',') if p.strip()] if user_prof and user_prof.get('preferences') else []
         prefs_val = st.multiselect("Dietary Philosophy / Preferences", pref_options, default=[p for p in current_prefs if p in pref_options])
 
+    # Additional Health Considerations (Optional)
+    st.markdown("#### Additional Health Considerations")
+    st.caption("Optional. Used only to provide cautious dietary context and general nutritional guidance. Does not replace professional medical advice, diagnosis, or clinical treatment.")
+    
+    health_condition_options = [
+        "Diabetes",
+        "High blood pressure",
+        "Kidney disease",
+        "Other dietary considerations",
+        "Prefer not to disclose"
+    ]
+    curr_health_raw = user_prof.get("health_conditions", "") if user_prof else ""
+    curr_health_list = [h.strip() for h in curr_health_raw.split(",") if h.strip()]
+    health_conditions_val = st.multiselect(
+        "Select Relevant Health Conditions (Optional)",
+        health_condition_options,
+        default=[h for h in curr_health_list if h in health_condition_options],
+        help="Information is optional. You may clear selections at any time."
+    )
+
     save_submit = st.form_submit_button("Compute & Save Profile", type="primary")
 
 # Physiological Calculations
@@ -130,7 +151,8 @@ if save_submit:
         goal=goal_key,
         allergies=", ".join(allergies_val),
         preferences=", ".join(prefs_val),
-        target_calories=target_cal
+        target_calories=target_cal,
+        health_conditions=", ".join(health_conditions_val)
     )
     st.success("User profile successfully updated and synchronized.")
     st.rerun()

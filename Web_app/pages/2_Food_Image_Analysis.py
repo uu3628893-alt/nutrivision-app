@@ -16,7 +16,7 @@ from src import food_labels
 from src import food_mapping
 from src.config import AVAILABLE_MODELS, DEFAULT_MODEL_NAME
 
-st.set_page_config(page_title="Food Image Analysis – NutriVision", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="Food Image Analysis - NutriVision", layout="wide")
 
 st.title("Food Image Semantic Segmentation")
 st.caption("Deep Learning Ingredient Identification using FoodSeg103 Models")

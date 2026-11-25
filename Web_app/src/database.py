@@ -32,9 +32,16 @@ def init_database() -> None:
                 allergies TEXT,
                 preferences TEXT,
                 target_calories REAL,
+                health_conditions TEXT DEFAULT '',
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # Schema migration: ensure health_conditions column exists
+        cursor.execute("PRAGMA table_info(user_profiles)")
+        profile_columns = [col[1] for col in cursor.fetchall()]
+        if "health_conditions" not in profile_columns:
+            cursor.execute("ALTER TABLE user_profiles ADD COLUMN health_conditions TEXT DEFAULT ''")
         
         # Meal records table
         cursor.execute("""
@@ -89,7 +96,10 @@ def get_user_profile() -> Optional[Dict[str, Any]]:
         cursor.execute("SELECT * FROM user_profiles WHERE id = 1")
         row = cursor.fetchone()
         if row:
-            return dict(row)
+            profile = dict(row)
+            if "health_conditions" not in profile or profile["health_conditions"] is None:
+                profile["health_conditions"] = ""
+            return profile
     return None
 
 def save_user_profile(
@@ -101,7 +111,8 @@ def save_user_profile(
     goal: str,
     allergies: str,
     preferences: str,
-    target_calories: float
+    target_calories: float,
+    health_conditions: str = ""
 ) -> None:
     """Insert or update user biometric profile."""
     init_database()
@@ -109,8 +120,8 @@ def save_user_profile(
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO user_profiles (
-                id, age, sex, height_cm, weight_kg, activity_level, goal, allergies, preferences, target_calories, updated_at
-            ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                id, age, sex, height_cm, weight_kg, activity_level, goal, allergies, preferences, target_calories, health_conditions, updated_at
+            ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(id) DO UPDATE SET
                 age = excluded.age,
                 sex = excluded.sex,
@@ -121,8 +132,9 @@ def save_user_profile(
                 allergies = excluded.allergies,
                 preferences = excluded.preferences,
                 target_calories = excluded.target_calories,
+                health_conditions = excluded.health_conditions,
                 updated_at = CURRENT_TIMESTAMP
-        """, (age, sex, height_cm, weight_kg, activity_level, goal, allergies, preferences, target_calories))
+        """, (age, sex, height_cm, weight_kg, activity_level, goal, allergies, preferences, target_calories, health_conditions or ""))
         conn.commit()
 
 def delete_user_profile() -> None:

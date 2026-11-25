@@ -23,23 +23,34 @@
         "quick_test_samples": 100,
         "device": "cuda"
     },
-    "model_selection": "DeepLabV3+ (ResNet-50)",
+    "model_selection": "Ensemble (U-Net weight 0.30)",
     "unet_test_metrics": {
-        "mIoU": 0.09714447446657484,
-        "Dice Coefficient": 0.13381285242056243,
-        "Pixel Accuracy": 0.6838192459570999,
-        "Precision": 0.37816503393298434,
-        "Recall": 0.15304354723166552,
-        "Macro F1": 0.21790204147563685,
-        "Inference Latency (ms)": 12.893402126780673
+        "mIoU": 0.08710461295229613,
+        "Dice Coefficient": 0.11984570495447336,
+        "Pixel Accuracy": 0.6843075951033509,
+        "Precision": 0.35800213509013057,
+        "Recall": 0.14330250526357796,
+        "Macro F1": 0.11984570495447336,
+        "Inference Latency (ms)": 11.223421813804466
+    },
+    "ensemble_weight": 0.3,
+    "ensemble_validation_miou": 0.2369655306284619,
+    "ensemble_test_metrics": {
+        "mIoU": 0.23286994505336403,
+        "Dice Coefficient": 0.3139684835481373,
+        "Pixel Accuracy": 0.7625823563658382,
+        "Precision": 0.5361897069590935,
+        "Recall": 0.3182412161249861,
+        "Macro F1": 0.3139684835481373,
+        "Inference Latency (ms)": 28.168454344498617
     },
     "deeplab_test_metrics": {
-        "mIoU": 0.2318770304430733,
-        "Dice Coefficient": 0.3166953012584658,
-        "Pixel Accuracy": 0.7423339414931572,
-        "Precision": 0.5261532796236614,
-        "Recall": 0.3226528474850793,
-        "Macro F1": 0.4000085448544274,
-        "Inference Latency (ms)": 11.774143811022297
+        "mIoU": 0.232353530854075,
+        "Dice Coefficient": 0.31481676015553106,
+        "Pixel Accuracy": 0.7584943713293143,
+        "Precision": 0.5281747847365706,
+        "Recall": 0.3230438428605821,
+        "Macro F1": 0.31481676015553106,
+        "Inference Latency (ms)": 10.52283637118249
     }
 }

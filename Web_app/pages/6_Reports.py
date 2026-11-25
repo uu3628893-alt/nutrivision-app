@@ -14,7 +14,7 @@ from src import utils
 from src import recommendation_engine
 from src import bmi_calculator
 
-st.set_page_config(page_title="Reports & Exports – NutriVision", page_icon="📄", layout="wide")
+st.set_page_config(page_title="Reports & Exports - NutriVision", layout="wide")
 
 st.title("Nutritional Assessment Reports & Data Export")
 st.caption("Standardized Clinical Reporting and Longitudinal CSV Export")

@@ -11,7 +11,7 @@ import streamlit as st
 import pandas as pd
 from src import database
 
-st.set_page_config(page_title="Meal History – NutriVision", page_icon="📜", layout="wide")
+st.set_page_config(page_title="Meal History - NutriVision", layout="wide")
 
 st.title("Meal History & Dietary Audit")
 st.caption("Chronological Dietary Records and Ingredient Breakdown")

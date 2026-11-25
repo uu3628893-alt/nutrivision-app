@@ -14,7 +14,7 @@ from src import visualizations
 from src import bmi_calculator
 from src import config
 
-st.set_page_config(page_title="Dashboard – NutriVision", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Dashboard - NutriVision", layout="wide")
 
 st.title("Dietary Intake Dashboard")
 st.caption("Personalized Nutritional Monitoring and Macronutrient Energy Distribution")
