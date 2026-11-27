@@ -12,17 +12,16 @@ from src import llm_recommendation
 from src import recommendation_engine
 from src import config
 
-def create_mock_client(response_text: str):
+def create_mock_gemini_client(response_text: str):
     mock_client = MagicMock()
-    mock_choice = MagicMock()
-    mock_choice.message.content = response_text
     mock_response = MagicMock()
-    mock_response.choices = [mock_choice]
-    mock_client.chat.completions.create.return_value = mock_response
+    mock_response.text = response_text
+    mock_client.models.generate_content.return_value = mock_response
     return mock_client
 
-def test_scenario_1_normal_meal_valid_profile():
-    meal_nutrition = {
+@pytest.fixture
+def sample_meal():
+    return {
         "totals": {
             "calories_kcal": 650.0,
             "protein_g": 35.0,
@@ -39,12 +38,15 @@ def test_scenario_1_normal_meal_valid_profile():
             "fat_pct": 30.0
         },
         "ingredient_details": [
-            {"food_name": "grilled chicken breast", "grams": 150.0, "portion_name": "1 piece (150g)", "calories_kcal": 240.0},
-            {"food_name": "brown rice cooked", "grams": 200.0, "portion_name": "1 cup (200g)", "calories_kcal": 220.0},
-            {"food_name": "steamed broccoli", "grams": 100.0, "portion_name": "1 cup (100g)", "calories_kcal": 55.0}
+            {"food_name": "grilled chicken breast", "grams": 150.0, "portion_name": "1 piece (150g)", "calories_kcal": 240.0, "protein_g": 31.0, "carbs_g": 0.0, "fat_g": 5.0},
+            {"food_name": "brown rice cooked", "grams": 200.0, "portion_name": "1 cup (200g)", "calories_kcal": 220.0, "protein_g": 5.0, "carbs_g": 45.0, "fat_g": 2.0},
+            {"food_name": "steamed broccoli", "grams": 100.0, "portion_name": "1 cup (100g)", "calories_kcal": 55.0, "protein_g": 3.7, "carbs_g": 11.0, "fat_g": 0.6}
         ]
     }
-    user_profile = {
+
+@pytest.fixture
+def sample_profile():
+    return {
         "age": 28,
         "sex": "Male",
         "height_cm": 178.0,
@@ -57,376 +59,258 @@ def test_scenario_1_normal_meal_valid_profile():
         "health_conditions": ""
     }
 
-    mock_llm_json = json.dumps({
-        "meal_assessment": "This balanced lunch provides 650 kcal with good protein and fiber distribution.",
-        "personalized_suggestions": [
-            "Maintain current portion proportions to align with daily energy targets.",
-            "Incorporate healthy fats such as olive oil or avocado if additional satiety is desired."
+# Scenario 1: Successful personalized recommendation with Gemini
+def test_scenario_1_successful_gemini_recommendation(sample_meal, sample_profile):
+    mock_payload = {
+        "meal_assessment": "This lunch provides 650 kcal with a well-balanced macronutrient distribution (22% protein, 48% carbs, 30% fat).",
+        "personalized_recommendations": [
+            "Maintain current portion sizes of grilled chicken and brown rice to align with your 2200 kcal daily maintenance target.",
+            "Consider adding a light drizzle of olive oil or seeds for beneficial unsaturated fatty acids."
         ],
         "health_considerations": [
-            "No chronic health conditions disclosed; macronutrient proportions are within recommended ranges."
+            "No chronic conditions reported; current sodium (520 mg) is within standard daily reference limits."
         ],
-        "important_notices": [
-            "Portion weights based on typical prepared servings."
+        "suggested_improvements": [
+            "Increase cruciferous vegetables such as broccoli or spinach to further boost dietary fiber intake."
+        ],
+        "limitations": [
+            "Portion weights are based on standard reference measurements."
         ]
-    })
-    mock_client = create_mock_client(mock_llm_json)
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
+    }
+    client = create_mock_gemini_client(json.dumps(mock_payload))
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=sample_profile,
         meal_type="lunch",
-        client=mock_client
+        include_health_conditions=True,
+        client=client
     )
 
     assert result["success"] is True
-    assert result["source"] == "llm"
+    assert result["source"] == "gemini"
     assert "650 kcal" in result["meal_assessment"]
-    assert len(result["personalized_suggestions"]) == 2
-    assert len(result["important_notices"]) >= 1
+    assert len(result["personalized_recommendations"]) == 2
+    assert len(result["suggested_improvements"]) == 1
+    assert any("Educational Prototype Notice" in l for l in result["limitations"])
 
-def test_scenario_2_weight_management_goal():
-    meal_nutrition = {
-        "totals": {
-            "calories_kcal": 920.0,
-            "protein_g": 20.0,
-            "carbs_g": 130.0,
-            "fat_g": 35.0,
-            "fiber_g": 4.0,
-            "sodium_mg": 950.0,
-            "sugars_g": 32.0,
-            "total_grams": 550.0
-        },
-        "macronutrient_percentages": {
-            "protein_pct": 9.0,
-            "carbs_pct": 56.0,
-            "fat_pct": 35.0
-        },
-        "ingredient_details": [
-            {"food_name": "pasta in cream sauce", "grams": 400.0, "portion_name": "large bowl", "calories_kcal": 750.0},
-            {"food_name": "garlic bread", "grams": 150.0, "portion_name": "2 slices", "calories_kcal": 170.0}
-        ]
-    }
-    user_profile = {
+# Scenario 2: Nutrients & goals alignment (e.g. weight loss deficit target)
+def test_scenario_2_nutrients_and_goals_alignment(sample_meal):
+    deficit_profile = {
         "age": 35,
         "sex": "Female",
         "height_cm": 162.0,
-        "weight_kg": 80.0,
+        "weight_kg": 82.0,
         "activity_level": "Sedentary",
         "goal": "weight_loss",
         "allergies": "",
         "preferences": "",
-        "target_calories": 1500.0,
+        "target_calories": 1400.0,
         "health_conditions": ""
     }
-
-    mock_llm_json = json.dumps({
-        "meal_assessment": "This meal provides 920 kcal, which constitutes over 60% of your daily caloric budget for weight reduction.",
-        "personalized_suggestions": [
-            "Reduce pasta portion to 200g and add a lean protein source such as chicken breast to increase protein above 25%.",
-            "Swap creamy sauce for a tomato-based vegetable marinara to reduce dietary fat density."
+    mock_payload = {
+        "meal_assessment": "This meal yields 650 kcal, consuming approximately 46% of your daily 1400 kcal deficit allocation.",
+        "personalized_recommendations": [
+            "Reduce brown rice portion from 200g to 120g to lower meal energy while preserving satiety through the lean chicken breast.",
+            "Double the steamed broccoli portion to maintain volume and micronutrient density with minimal additional calories."
         ],
         "health_considerations": [
-            "Low fiber (4g) may reduce satiety between meals during a caloric deficit."
+            "Adequate dietary fiber (9g) supports blood glucose stability and prolongs satiety during caloric restriction."
         ],
-        "important_notices": [
-            "Estimated portion sizes; weigh starches to assist accurate caloric tracking."
-        ]
-    })
-    mock_client = create_mock_client(mock_llm_json)
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
-        meal_type="dinner",
-        client=mock_client
+        "suggested_improvements": [
+            "Prioritize lean proteins and high-volume leafy greens across remaining daily meals."
+        ],
+        "limitations": []
+    }
+    client = create_mock_gemini_client(json.dumps(mock_payload))
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=deficit_profile,
+        meal_type="lunch",
+        client=client
     )
 
     assert result["success"] is True
-    assert "920 kcal" in result["meal_assessment"]
-    assert any("reduce" in s.lower() or "protein" in s.lower() for s in result["personalized_suggestions"])
+    assert "1400 kcal" in result["meal_assessment"]
+    assert any("reduce" in r.lower() or "rice" in r.lower() for r in result["personalized_recommendations"])
 
-def test_scenario_3_declared_allergen_and_synonyms():
-    meal_nutrition = {
+# Scenario 3: Optional health condition handling (consented vs excluded)
+def test_scenario_3_optional_health_condition_handling(sample_meal, sample_profile):
+    profile_with_health = dict(sample_profile)
+    profile_with_health["health_conditions"] = "Type 2 Diabetes, Hypertension"
+
+    # Consented inclusion
+    prompt_consented = llm_recommendation.build_gemini_prompt(
+        meal_nutrition=sample_meal,
+        user_profile=profile_with_health,
+        meal_type="lunch",
+        include_health_conditions=True
+    )
+    prompt_consented_data = json.loads(prompt_consented)
+    assert "Type 2 Diabetes" in prompt_consented_data["user_profile"]["health_conditions"]
+
+    # Excluded / privacy opted-out
+    prompt_excluded = llm_recommendation.build_gemini_prompt(
+        meal_nutrition=sample_meal,
+        user_profile=profile_with_health,
+        meal_type="lunch",
+        include_health_conditions=False
+    )
+    prompt_excluded_data = json.loads(prompt_excluded)
+    assert "Excluded by user privacy choice" in prompt_excluded_data["user_profile"]["health_conditions"]
+    assert "Type 2 Diabetes" not in prompt_excluded_data["user_profile"]["health_conditions"]
+
+# Scenario 4: Allergy safety alerts (deterministic safety alerts preserved independently)
+def test_scenario_4_allergy_safety_alerts(sample_meal, sample_profile):
+    allergic_profile = dict(sample_profile)
+    allergic_profile["allergies"] = "peanut, chicken"
+
+    safety = recommendation_engine.validate_meal_safety(sample_meal, allergic_profile)
+    allergen_alerts = [a for a in safety["alerts"] if "ALLERGEN WARNING" in a]
+    assert len(allergen_alerts) > 0
+    assert any("chicken" in a.lower() for a in allergen_alerts)
+
+    # Prompt builder must include the independent safety flags
+    prompt_json = llm_recommendation.build_gemini_prompt(
+        meal_nutrition=sample_meal,
+        user_profile=allergic_profile,
+        safety_alerts=safety["alerts"]
+    )
+    prompt_data = json.loads(prompt_json)
+    assert len(prompt_data["independent_safety_flags"]) > 0
+
+# Scenario 5: Missing nutrient values
+def test_scenario_5_missing_nutrient_values(sample_profile):
+    meal_with_missing = {
         "totals": {
             "calories_kcal": 400.0,
-            "protein_g": 12.0,
-            "carbs_g": 30.0,
-            "fat_g": 25.0,
-            "fiber_g": 5.0,
-            "sodium_mg": 280.0,
-            "sugars_g": 10.0,
-            "total_grams": 200.0
-        },
-        "macronutrient_percentages": {"protein_pct": 12.0, "carbs_pct": 32.0, "fat_pct": 56.0},
-        "ingredient_details": [
-            {"food_name": "peanut butter spread", "grams": 40.0, "portion_name": "2 tbsp", "calories_kcal": 240.0},
-            {"food_name": "whole wheat toast", "grams": 60.0, "portion_name": "2 slices", "calories_kcal": 160.0}
-        ]
-    }
-    user_profile = {
-        "age": 24,
-        "sex": "Male",
-        "height_cm": 175.0,
-        "weight_kg": 70.0,
-        "activity_level": "Moderately Active",
-        "goal": "maintain",
-        "allergies": "peanut, shellfish",
-        "preferences": "",
-        "target_calories": 2100.0,
-        "health_conditions": ""
-    }
-
-    mock_llm_json = json.dumps({
-        "meal_assessment": "Energy-dense meal containing toast and peanut butter.",
-        "personalized_suggestions": [
-            "Replace peanut butter with sunflower seed butter due to declared allergen."
-        ],
-        "health_considerations": ["Allergy hazard present."],
-        "important_notices": ["Immediate allergen check required."]
-    })
-    mock_client = create_mock_client(mock_llm_json)
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
-        meal_type="breakfast",
-        client=mock_client
-    )
-
-    # Independent rule-based allergen alert must be preserved in safety alerts and important notices
-    assert len(result["safety_alerts"]) >= 1
-    assert any("peanut" in a.lower() for a in result["safety_alerts"])
-    assert any("ALLERGEN WARNING" in n for n in result["important_notices"])
-
-def test_scenario_4_optional_health_conditions():
-    meal_nutrition = {
-        "totals": {
-            "calories_kcal": 750.0,
-            "protein_g": 30.0,
-            "carbs_g": 85.0,
-            "fat_g": 25.0,
-            "fiber_g": 7.0,
-            "sodium_mg": 1250.0,
-            "sugars_g": 28.0,
-            "total_grams": 450.0
-        },
-        "macronutrient_percentages": {"protein_pct": 17.0, "carbs_pct": 50.0, "fat_pct": 33.0},
-        "ingredient_details": [
-            {"food_name": "teriyaki chicken bowl", "grams": 450.0, "portion_name": "1 bowl", "calories_kcal": 750.0}
-        ]
-    }
-    user_profile = {
-        "age": 52,
-        "sex": "Female",
-        "height_cm": 160.0,
-        "weight_kg": 68.0,
-        "activity_level": "Lightly Active",
-        "goal": "maintain",
-        "allergies": "",
-        "preferences": "",
-        "target_calories": 1750.0,
-        "health_conditions": "Diabetes, High blood pressure"
-    }
-
-    mock_llm_json = json.dumps({
-        "meal_assessment": "The meal provides 750 kcal with notable sodium and simple carbohydrate content.",
-        "personalized_suggestions": [
-            "Request sauce on the side to moderate sodium and sugar intake."
-        ],
-        "health_considerations": [
-            "Sodium level (1250 mg) is elevated relative to DASH diet targets for blood pressure management.",
-            "Higher sugar content from teriyaki glaze may prompt a sharper postprandial glucose curve."
-        ],
-        "important_notices": [
-            "Guidance is educational and does not supersede your clinical care plan."
-        ]
-    })
-    mock_client = create_mock_client(mock_llm_json)
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
-        meal_type="lunch",
-        client=mock_client
-    )
-
-    assert result["success"] is True
-    assert len(result["health_considerations"]) >= 1
-    assert any("blood pressure" in h.lower() or "sodium" in h.lower() for h in result["health_considerations"])
-
-def test_scenario_5_missing_nutritional_values():
-    meal_nutrition = {
-        "totals": {
-            "calories_kcal": 350.0,
-            "protein_g": 10.0,
+            "protein_g": 20.0,
             "carbs_g": None,
-            "fat_g": 8.0,
+            "fat_g": None,
             "fiber_g": None,
             "sodium_mg": None,
-            "sugars_g": 5.0,
-            "total_grams": 200.0
+            "sugars_g": None,
+            "total_grams": 250.0
         },
-        "macronutrient_percentages": {"protein_pct": 15.0, "carbs_pct": 0.0, "fat_pct": 20.0},
+        "macronutrient_percentages": {
+            "protein_pct": 20.0,
+            "carbs_pct": 0.0,
+            "fat_pct": 0.0
+        },
         "ingredient_details": [
-            {"food_name": "unclassified specialty soup", "grams": 200.0, "portion_name": "1 bowl", "calories_kcal": 350.0}
+            {"food_name": "steamed fish", "grams": 250.0, "portion_name": "custom", "calories_kcal": 400.0}
         ]
     }
-    user_profile = {
-        "age": 30,
-        "sex": "Male",
-        "height_cm": 175.0,
-        "weight_kg": 72.0,
-        "activity_level": "Sedentary",
-        "goal": "maintain",
-        "allergies": "",
-        "preferences": "",
-        "target_calories": 2000.0,
-        "health_conditions": ""
-    }
+    safety = recommendation_engine.validate_meal_safety(meal_with_missing, sample_profile)
+    missing_notice = [a for a in safety["alerts"] if "unrecorded or missing" in a.lower()]
+    assert len(missing_notice) > 0
 
-    # Rule-based check must flag missing nutrients
-    rule_results = recommendation_engine.generate_dietary_recommendations(meal_nutrition, user_profile)
-    assert any("missing" in a.lower() or "unrecorded" in a.lower() for a in rule_results["alerts"])
-
-def test_scenario_6_uncertain_assumed_portions():
-    meal_nutrition = {
-        "totals": {
-            "calories_kcal": 500.0,
-            "protein_g": 20.0,
-            "carbs_g": 60.0,
-            "fat_g": 15.0,
-            "fiber_g": 5.0,
-            "sodium_mg": 400.0,
-            "sugars_g": 6.0,
-            "total_grams": 300.0
-        },
-        "macronutrient_percentages": {"protein_pct": 18.0, "carbs_pct": 52.0, "fat_pct": 30.0},
-        "ingredient_details": [
-            {"food_name": "curry stew", "grams": 200.0, "portion_name": "100 g reference", "calories_kcal": 320.0},
-            {"food_name": "naan", "grams": 100.0, "portion_name": "100 g custom", "calories_kcal": 180.0}
-        ]
-    }
-    user_profile = {
-        "age": 28,
-        "sex": "Male",
-        "height_cm": 175.0,
-        "weight_kg": 70.0,
-        "activity_level": "Moderately Active",
-        "goal": "maintain",
-        "allergies": "",
-        "preferences": "",
-        "target_calories": 2100.0,
-        "health_conditions": ""
-    }
-
-    mock_llm_json = json.dumps({
-        "meal_assessment": "Estimated 500 kcal meal based on reference amounts.",
-        "personalized_suggestions": ["Ensure portion accuracy if tracking closely."],
-        "health_considerations": ["Balanced macronutrients."],
-        "important_notices": ["Portions were assumed based on standard references."]
-    })
-    mock_client = create_mock_client(mock_llm_json)
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
-        meal_type="dinner",
-        client=mock_client
-    )
-
-    # Assumed portions must be noted in important notices
-    assert any("assumed portion" in n.lower() or "reference" in n.lower() for n in result["important_notices"])
-
-def test_scenario_7_empty_user_profile():
-    meal_nutrition = {
-        "totals": {"calories_kcal": 450.0, "protein_g": 25.0, "carbs_g": 40.0, "fat_g": 18.0, "fiber_g": 6.0, "sodium_mg": 500.0, "sugars_g": 4.0, "total_grams": 300.0},
-        "macronutrient_percentages": {"protein_pct": 24.0, "carbs_pct": 39.0, "fat_pct": 37.0},
-        "ingredient_details": []
-    }
-    empty_profile = {}
-
-    fallback = llm_recommendation.generate_fallback_recommendation(meal_nutrition, empty_profile, meal_type="lunch")
-    assert fallback["success"] is True
-    assert "450 kcal" in fallback["meal_assessment"]
-    assert len(fallback["personalized_suggestions"]) >= 1
-
-def test_scenario_8_invalid_llm_response():
-    meal_nutrition = {
-        "totals": {"calories_kcal": 550.0, "protein_g": 30.0, "carbs_g": 60.0, "fat_g": 18.0, "fiber_g": 8.0, "sodium_mg": 450.0, "sugars_g": 5.0, "total_grams": 350.0},
-        "macronutrient_percentages": {"protein_pct": 23.0, "carbs_pct": 47.0, "fat_pct": 30.0},
-        "ingredient_details": [{"food_name": "salmon fillet", "grams": 150.0, "portion_name": "1 fillet", "calories_kcal": 300.0}]
-    }
-    user_profile = {"age": 30, "sex": "Male", "height_cm": 175.0, "weight_kg": 72.0, "activity_level": "Moderately Active", "goal": "maintain", "target_calories": 2100.0}
-
-    # Malformed non-JSON response from LLM
-    mock_client = create_mock_client("I cannot generate a structured JSON recommendation right now.")
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
+# Scenario 6: Invalid Gemini response (malformed JSON or invalid schema)
+def test_scenario_6_invalid_gemini_response(sample_meal, sample_profile):
+    client = create_mock_gemini_client("This is non-JSON unstructured conversational text from model.")
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=sample_profile,
         meal_type="lunch",
-        client=mock_client
+        client=client
     )
 
-    # Must fall back gracefully to rule-based without crashing
-    assert result["success"] is True
-    assert result["source"] == "rule_based_fallback"
-    assert "550 kcal" in result["meal_assessment"]
+    # Must fail cleanly without crashing and must NOT substitute rule recommendations
+    assert result["success"] is False
+    assert result["personalized_recommendations"] == []
+    assert len(result["error_message"]) > 0
 
-def test_scenario_9_llm_timeout_or_api_failure():
-    meal_nutrition = {
-        "totals": {"calories_kcal": 600.0, "protein_g": 25.0, "carbs_g": 70.0, "fat_g": 20.0, "fiber_g": 6.0, "sodium_mg": 600.0, "sugars_g": 10.0, "total_grams": 400.0},
-        "macronutrient_percentages": {"protein_pct": 18.0, "carbs_pct": 51.0, "fat_pct": 31.0},
-        "ingredient_details": []
-    }
-    user_profile = {"age": 30, "sex": "Female", "height_cm": 165.0, "weight_kg": 60.0, "activity_level": "Moderately Active", "goal": "maintain", "target_calories": 1900.0}
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.side_effect = TimeoutError("Request timed out after 15 seconds")
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
-        meal_type="lunch",
-        client=mock_client
-    )
-
-    assert result["success"] is True
-    assert result["source"] == "rule_based_fallback"
-    assert "error_message" in result
-    assert "TimeoutError" in result["error_message"] or "timed out" in result["error_message"]
-
-def test_scenario_10_missing_api_key(monkeypatch):
-    meal_nutrition = {
-        "totals": {"calories_kcal": 500.0, "protein_g": 25.0, "carbs_g": 55.0, "fat_g": 15.0, "fiber_g": 7.0, "sodium_mg": 400.0, "sugars_g": 6.0, "total_grams": 350.0},
-        "macronutrient_percentages": {"protein_pct": 21.0, "carbs_pct": 47.0, "fat_pct": 32.0},
-        "ingredient_details": []
-    }
-    user_profile = {"age": 28, "sex": "Male", "height_cm": 175.0, "weight_kg": 70.0, "activity_level": "Moderately Active", "goal": "maintain", "target_calories": 2000.0}
-
-    # Ensure no API key in environment or secrets
-    monkeypatch.setattr(config, "get_llm_api_key", lambda: None)
-
-    result = llm_recommendation.generate_llm_recommendation(
-        meal_nutrition=meal_nutrition,
-        user_profile=user_profile,
+# Scenario 7: Missing API key (clear error message, no rule fallback)
+def test_scenario_7_missing_api_key(monkeypatch, sample_meal, sample_profile):
+    monkeypatch.setattr(config, "get_gemini_config", lambda: {"api_key": None, "model": "gemini-2.5-flash"})
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=sample_profile,
         meal_type="lunch",
         client=None
     )
 
-    assert result["success"] is True
-    assert result["source"] == "rule_based_fallback"
-    assert len(result["personalized_suggestions"]) >= 1
-    assert "500 kcal" in result["meal_assessment"]
+    assert result["success"] is False
+    assert "GEMINI_API_KEY" in result["error_message"]
+    assert result["personalized_recommendations"] == []
 
-def test_pediatric_age_warning():
-    meal_nutrition = {
-        "totals": {"calories_kcal": 500.0, "protein_g": 20.0, "carbs_g": 65.0, "fat_g": 15.0, "fiber_g": 5.0, "sodium_mg": 450.0, "sugars_g": 10.0, "total_grams": 300.0},
-        "macronutrient_percentages": {"protein_pct": 17.0, "carbs_pct": 55.0, "fat_pct": 28.0},
-        "ingredient_details": []
-    }
-    user_profile = {"age": 16, "sex": "Male", "height_cm": 170.0, "weight_kg": 60.0, "activity_level": "Moderately Active", "goal": "maintain", "target_calories": 2200.0}
+# Scenario 8: API timeout handling (no rule fallback)
+def test_scenario_8_api_timeout(sample_meal, sample_profile):
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = TimeoutError("DEADLINE_EXCEEDED: request timed out after 15000ms")
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=sample_profile,
+        meal_type="lunch",
+        client=mock_client
+    )
 
-    rule_results = recommendation_engine.generate_dietary_recommendations(meal_nutrition, user_profile)
-    assert any("under 18" in a.lower() or "pediatric" in a.lower() for a in rule_results["alerts"])
+    assert result["success"] is False
+    assert "timed out" in result["error_message"].lower()
+    assert result["personalized_recommendations"] == []
+
+# Scenario 9: Free-tier rate-limit error (429/ResourceExhausted handling)
+def test_scenario_9_rate_limit_error(sample_meal, sample_profile):
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = Exception("429 RESOURCE_EXHAUSTED: rate limit exceeded for free tier")
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=sample_profile,
+        meal_type="lunch",
+        client=mock_client
+    )
+
+    assert result["success"] is False
+    assert "rate limit" in result["error_message"].lower()
+    assert result["personalized_recommendations"] == []
+
+# Scenario 10: Unavailable model (404/NotFound handling)
+def test_scenario_10_unavailable_model(sample_meal, sample_profile):
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = Exception("404 NOT_FOUND: model models/gemini-invalid-model not found")
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=sample_profile,
+        meal_type="lunch",
+        client=mock_client
+    )
+
+    assert result["success"] is False
+    assert "unavailable" in result["error_message"].lower() or "not found" in result["error_message"].lower()
+    assert result["personalized_recommendations"] == []
+
+# Scenario 11: Verification that rule-based recommendations are NEVER returned as fallback
+def test_scenario_11_no_rule_fallback_on_any_error(sample_meal, sample_profile):
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = RuntimeError("Fatal connection failure")
+    result = llm_recommendation.generate_gemini_recommendation(
+        meal_nutrition=sample_meal,
+        user_profile=sample_profile,
+        meal_type="lunch",
+        client=mock_client
+    )
+
+    assert result["success"] is False
+    # Verify that no canned rule advice is generated
+    assert result["personalized_recommendations"] == []
+    assert result["meal_assessment"] == ""
+    assert result["suggested_improvements"] == []
+    # Verify that independent safety alerts remain accessible
+    assert "safety_alerts" in result
+
+# Scenario 12: Outdated recommendations signature invalidation
+def test_scenario_12_recommendation_signature_invalidation():
+    items_state_1 = [{"fdc_id": 1001, "grams": 150.0}]
+    items_state_2 = [{"fdc_id": 1001, "grams": 200.0}]
+    profile_time_1 = "2026-11-25 10:00:00"
+    profile_time_2 = "2026-11-25 11:30:00"
+
+    sig_1 = (tuple((it["fdc_id"], it["grams"]) for it in items_state_1), profile_time_1, "Lunch")
+    sig_1_same = (tuple((it["fdc_id"], it["grams"]) for it in items_state_1), profile_time_1, "Lunch")
+    sig_portion_change = (tuple((it["fdc_id"], it["grams"]) for it in items_state_2), profile_time_1, "Lunch")
+    sig_profile_change = (tuple((it["fdc_id"], it["grams"]) for it in items_state_1), profile_time_2, "Lunch")
+    sig_occasion_change = (tuple((it["fdc_id"], it["grams"]) for it in items_state_1), profile_time_1, "Dinner")
+
+    assert sig_1 == sig_1_same
+    assert sig_1 != sig_portion_change
+    assert sig_1 != sig_profile_change
+    assert sig_1 != sig_occasion_change

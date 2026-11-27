@@ -10,43 +10,75 @@ import numpy as np
 APP_NAME = "NutriVision"
 APP_TITLE = "NutriVision - AI-Powered Nutritional Analysis and Personalised Dietary Recommendation System"
 APP_ICON = "N"
-APP_VERSION = "1.1.0"
+APP_VERSION = "2.0.0"
 
-# LLM Configuration
-LLM_PROVIDER = "openai"
-LLM_DEFAULT_MODEL = "gpt-4o-mini"
-LLM_REQUEST_TIMEOUT = 15
-LLM_MAX_TOKENS = 700
-LLM_TEMPERATURE = 0.2
+# Google Gemini Configuration
+GEMINI_DEFAULT_MODEL = "gemini-2.5-flash"
+GEMINI_REQUEST_TIMEOUT = 25
+GEMINI_MAX_OUTPUT_TOKENS = 1200
+GEMINI_TEMPERATURE = 0.2
 
-def get_llm_api_key() -> Optional[str]:
-    # Check session state first (from UI input), then secrets, then environment variables
+def get_gemini_api_key() -> Optional[str]:
+    # Retrieve Gemini API key from Streamlit secrets, environment variables, or local secrets.toml
     try:
         import streamlit as st
-        if hasattr(st, "session_state") and "user_api_key" in st.session_state and st.session_state["user_api_key"]:
-            return str(st.session_state["user_api_key"]).strip()
         if hasattr(st, "secrets"):
-            if "OPENAI_API_KEY" in st.secrets:
-                return str(st.secrets["OPENAI_API_KEY"]).strip()
-            if "LLM_API_KEY" in st.secrets:
-                return str(st.secrets["LLM_API_KEY"]).strip()
+            if "GEMINI_API_KEY" in st.secrets:
+                return str(st.secrets["GEMINI_API_KEY"]).strip()
+            if "GOOGLE_API_KEY" in st.secrets:
+                return str(st.secrets["GOOGLE_API_KEY"]).strip()
     except Exception:
         pass
-    env_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
+    env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if env_key:
         return env_key.strip()
+    try:
+        import tomllib
+        from src import paths
+        for sec_file in [paths.WEB_APP_DIR / ".streamlit" / "secrets.toml", paths.PROJECT_ROOT / ".streamlit" / "secrets.toml"]:
+            if sec_file.exists():
+                with open(sec_file, "rb") as f:
+                    sec_data = tomllib.load(f)
+                    if "GEMINI_API_KEY" in sec_data:
+                        return str(sec_data["GEMINI_API_KEY"]).strip()
+                    if "GOOGLE_API_KEY" in sec_data:
+                        return str(sec_data["GOOGLE_API_KEY"]).strip()
+    except Exception:
+        pass
     return None
 
-def get_llm_config() -> Dict[str, Any]:
-    api_key = get_llm_api_key()
-    model = os.environ.get("LLM_MODEL", LLM_DEFAULT_MODEL)
+def get_gemini_model() -> str:
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and "GEMINI_MODEL" in st.secrets:
+            return str(st.secrets["GEMINI_MODEL"]).strip()
+    except Exception:
+        pass
+    env_model = os.environ.get("GEMINI_MODEL")
+    if env_model:
+        return env_model.strip()
+    try:
+        import tomllib
+        from src import paths
+        for sec_file in [paths.WEB_APP_DIR / ".streamlit" / "secrets.toml", paths.PROJECT_ROOT / ".streamlit" / "secrets.toml"]:
+            if sec_file.exists():
+                with open(sec_file, "rb") as f:
+                    sec_data = tomllib.load(f)
+                    if "GEMINI_MODEL" in sec_data:
+                        return str(sec_data["GEMINI_MODEL"]).strip()
+    except Exception:
+        pass
+    return GEMINI_DEFAULT_MODEL
+
+def get_gemini_config() -> Dict[str, Any]:
+    api_key = get_gemini_api_key()
+    model = get_gemini_model()
     return {
-        "provider": LLM_PROVIDER,
         "model": model,
         "api_key": api_key,
-        "timeout": LLM_REQUEST_TIMEOUT,
-        "max_tokens": LLM_MAX_TOKENS,
-        "temperature": LLM_TEMPERATURE,
+        "timeout": GEMINI_REQUEST_TIMEOUT,
+        "max_output_tokens": GEMINI_MAX_OUTPUT_TOKENS,
+        "temperature": GEMINI_TEMPERATURE,
         "is_configured": bool(api_key)
     }
 

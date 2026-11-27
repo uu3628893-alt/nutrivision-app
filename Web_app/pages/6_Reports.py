@@ -102,7 +102,9 @@ if meals:
 
         all_recs = []
         for a in rec_obj.get('alerts', []):
-            all_recs.append({'category': 'Clinical Alert', 'text': a})
+            all_recs.append({'category': 'Safety Alert', 'text': a})
+        for ap in rec_obj.get('assumed_portions', []):
+            all_recs.append({'category': 'Portion Note', 'text': ap})
         for r in rec_obj.get('recommendations', []):
             all_recs.append({'category': 'Recommendation', 'text': r})
         for p in rec_obj.get('positive_feedback', []):

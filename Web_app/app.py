@@ -88,8 +88,9 @@ with col_w2:
 with col_w3:
     st.markdown("#### 3. Personalised Recommendations")
     st.write(
-        "Meal nutrient values are evaluated against user physiological baselines (Mifflin-St Jeor REE, WHO BMI, and "
-        "AMDR energy distribution targets) to generate clinically aligned dietary feedback and safety alerts."
+        "Meal nutrient totals and user physiological profiles are evaluated against clinical baselines. "
+        "Personalised dietary recommendations are generated exclusively using Google Gemini (gemini-2.5-flash), "
+        "complemented by independent deterministic allergen and portion safety screening."
     )
 
 # Quick Navigation Section
@@ -102,7 +103,7 @@ with nav_col1:
     st.info("**Food Image Analysis**\n\nUpload food imagery, run automated segmentation inference, inspect masks, and detect ingredients.")
 
 with nav_col2:
-    st.info("**Nutrition Analysis**\n\nScale empirical USDA portion sizes, compute exact nutrient breakdown, and review clinical feedback.")
+    st.info("**Nutrition Analysis**\n\nScale empirical USDA portion sizes, compute exact nutrient breakdown, and generate Gemini dietary recommendations.")
     st.info("**User Profile**\n\nConfigure anthropometric measurements, daily caloric goals, physical activity levels, and food allergies.")
 
 with nav_col3:

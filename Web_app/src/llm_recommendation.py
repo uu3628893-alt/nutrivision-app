@@ -1,56 +1,71 @@
 """
-LLM-based dietary recommendation module.
-Interacts with OpenAI-compatible APIs to provide personalized dietary guidance.
+Google Gemini-powered personalized dietary recommendation module.
+Sole generator of personalized, context-aware dietary recommendations in NutriVision.
 """
 
 import json
 import logging
 from typing import Dict, Any, Optional, List
+from pydantic import BaseModel, Field
+
 from src import config
 from src import recommendation_engine
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a clinical nutrition analysis assistant for an academic research prototype.
-Analyze the provided structured meal nutrition data and user profile.
-Generate personalized, evidence-based, cautious dietary recommendations.
+class DietaryRecommendationSchema(BaseModel):
+    meal_assessment: str = Field(
+        description="A concise explanation of the meal's estimated nutritional composition and energy balance."
+    )
+    personalized_recommendations: List[str] = Field(
+        description="Practical dietary recommendations and adjustments aligned with the user's goals and preferences."
+    )
+    health_considerations: List[str] = Field(
+        description="Appropriate general nutritional considerations based on voluntarily shared health conditions."
+    )
+    suggested_improvements: List[str] = Field(
+        description="Specific ingredient substitutions, portion modifications, or meal-balance enhancements."
+    )
+    limitations: List[str] = Field(
+        description="Transparent limitations regarding missing nutrient data, ambiguous items, or assumed portions."
+    )
 
-Follow these strict clinical constraints:
-1. Do not invent nutrients, ingredients, medical diagnoses, medication recommendations, or treatment plans.
-2. Ground all commentary in the supplied nutritional values, ingredient list, and user goals.
-3. If an ingredient portion is marked as assumed or estimated, acknowledge the uncertainty.
-4. If health conditions are provided, offer cautious dietary context only. State clearly that this is general guidance, not medical advice.
-5. If allergens are flagged, emphasize them prominently. Do not contradict allergen warnings.
-6. Provide actionable, practical adjustments (e.g. food swaps, portion modifications).
-7. Respond strictly in valid JSON format matching this schema:
-{
-  "meal_assessment": "Concise evaluation of the meal estimated nutritional composition and caloric balance.",
-  "personalized_suggestions": ["Actionable adjustment 1", "Actionable adjustment 2"],
-  "health_considerations": ["Cautious dietary observation reflecting health conditions or preferences"],
-  "important_notices": ["Portion assumptions, missing nutrient data, or safety limitations"]
-}
+GEMINI_SYSTEM_INSTRUCTION = """You are an evidence-based clinical nutrition analysis assistant for an academic research prototype.
+Analyze the supplied meal nutrition data, ingredient details, and anonymized user profile.
+Generate personalized, context-aware, cautious dietary recommendations.
+
+Follow these strict constraints:
+1. You are the sole generator of personalized dietary recommendations.
+2. Ground all advice strictly in the provided nutrient values, ingredients, and stated user goals.
+3. Do not invent nutrients, unlisted ingredients, medical diagnoses, medication recommendations, or clinical treatment plans.
+4. If an ingredient portion is flagged as estimated or assumed, explicitly acknowledge that limitation.
+5. If health conditions are disclosed with consent, offer cautious general dietary context only. Never claim clinical approval.
+6. If allergen warnings are present, ensure your suggestions strictly respect those exclusions.
+7. Provide actionable, practical adjustments (e.g. food swaps, portion adjustments).
+8. Return strictly structured JSON matching the provided schema.
 """
 
-def build_user_prompt(
+def build_gemini_prompt(
     meal_nutrition: Dict[str, Any],
     user_profile: Dict[str, Any],
     meal_type: str = "lunch",
-    rule_results: Optional[Dict[str, Any]] = None
+    include_health_conditions: bool = True,
+    safety_alerts: Optional[List[str]] = None
 ) -> str:
     totals = meal_nutrition.get("totals", {})
     percentages = meal_nutrition.get("macronutrient_percentages", {})
     ingredients = meal_nutrition.get("ingredient_details", [])
     
     # Anonymized user details only (no personal names, emails, or identifiers)
-    user_info = {
+    user_payload = {
         "age": user_profile.get("age", "Unknown"),
         "biological_sex": user_profile.get("sex", "Unknown"),
         "activity_level": user_profile.get("activity_level", "Unknown"),
         "dietary_goal": user_profile.get("goal", "maintain"),
         "daily_calorie_target": user_profile.get("target_calories", 2000),
         "declared_allergies": user_profile.get("allergies", "None"),
-        "food_preferences": user_profile.get("preferences", "None"),
-        "health_conditions": user_profile.get("health_conditions", "None disclosed")
+        "dietary_preferences": user_profile.get("preferences", "None"),
+        "health_conditions": user_profile.get("health_conditions", "None disclosed") if include_health_conditions else "Excluded by user privacy choice"
     }
     
     ingredient_summary = []
@@ -59,206 +74,195 @@ def build_user_prompt(
             "food_name": item.get("food_name", "Unknown"),
             "grams": round(float(item.get("grams", 0.0)), 1),
             "portion_description": item.get("portion_name", "standard reference"),
-            "calories_kcal": round(float(item.get("calories_kcal", 0.0)), 1)
+            "calories_kcal": round(float(item.get("calories_kcal", 0.0)), 1),
+            "protein_g": round(float(item.get("protein_g", 0.0)), 1),
+            "carbs_g": round(float(item.get("carbs_g", 0.0)), 1),
+            "fat_g": round(float(item.get("fat_g", 0.0)), 1)
         })
         
     meal_summary = {
         "meal_type": meal_type,
         "ingredients": ingredient_summary,
         "nutritional_totals": {
-            "calories_kcal": totals.get("calories_kcal", 0.0),
-            "protein_g": totals.get("protein_g", 0.0),
-            "carbohydrates_g": totals.get("carbs_g", 0.0),
-            "fat_g": totals.get("fat_g", 0.0),
-            "fiber_g": totals.get("fiber_g", 0.0),
-            "sodium_mg": totals.get("sodium_mg", 0.0),
-            "sugars_g": totals.get("sugars_g", 0.0)
+            "calories_kcal": totals.get("calories_kcal"),
+            "protein_g": totals.get("protein_g"),
+            "carbohydrates_g": totals.get("carbs_g"),
+            "fat_g": totals.get("fat_g"),
+            "fiber_g": totals.get("fiber_g"),
+            "sodium_mg": totals.get("sodium_mg"),
+            "sugars_g": totals.get("sugars_g")
         },
-        "macronutrient_distribution": {
+        "macronutrient_percentages": {
             "protein_pct": percentages.get("protein_pct", 0.0),
-            "carbs_pct": percentages.get("carbs_pct", 0.0),
+            "carbs_pct": percentages.get("carbs_pct", percentages.get("carb_pct", 0.0)),
             "fat_pct": percentages.get("fat_pct", 0.0)
         }
     }
     
-    rule_alerts = rule_results.get("alerts", []) if rule_results else []
-    
-    payload = {
-        "user_profile": user_info,
-        "meal_data": meal_summary,
-        "rule_based_alerts": rule_alerts
+    request_data = {
+        "user_profile": user_payload,
+        "meal_analysis": meal_summary,
+        "independent_safety_flags": safety_alerts or []
     }
     
-    return json.dumps(payload, indent=2)
+    return json.dumps(request_data, indent=2)
 
-def generate_fallback_recommendation(
+def generate_gemini_recommendation(
     meal_nutrition: Dict[str, Any],
     user_profile: Dict[str, Any],
     meal_type: str = "lunch",
-    reason: str = ""
+    include_health_conditions: bool = True,
+    client: Optional[Any] = None
 ) -> Dict[str, Any]:
-    rule_results = recommendation_engine.generate_dietary_recommendations(
+    # Run deterministic safety validation
+    safety_results = recommendation_engine.validate_meal_safety(
         meal_nutrition=meal_nutrition,
         user_profile=user_profile,
         meal_type=meal_type
     )
+    safety_alerts = safety_results.get("alerts", [])
+    assumed_portions = safety_results.get("assumed_portions", [])
     
-    totals = meal_nutrition.get("totals", {})
-    cal = round(float(totals.get("calories_kcal") or 0.0))
-    p = round(float(totals.get("protein_g") or 0.0), 1)
-    c = round(float(totals.get("carbs_g") or 0.0), 1)
-    f = round(float(totals.get("fat_g") or 0.0), 1)
+    gemini_conf = config.get_gemini_config()
+    api_key = gemini_conf.get("api_key")
+    model_name = gemini_conf.get("model", config.GEMINI_DEFAULT_MODEL)
     
-    meal_assessment = (
-        f"This {meal_type} provides an estimated {cal} kcal (Protein: {p}g, "
-        f"Carbohydrates: {c}g, Fat: {f}g). Evaluated using deterministic clinical guidelines."
+    # Strictly purely LLM-based: fail clearly if API key is not configured
+    if not api_key and client is None:
+        return {
+            "success": False,
+            "source": "gemini",
+            "error_message": "Google Gemini API key not configured. Please set the GEMINI_API_KEY environment variable or Streamlit secret to generate personalised recommendations.",
+            "meal_assessment": "",
+            "personalized_recommendations": [],
+            "health_considerations": [],
+            "suggested_improvements": [],
+            "limitations": [],
+            "safety_alerts": safety_alerts,
+            "assumed_portions": assumed_portions,
+            "model_used": model_name
+        }
+
+    prompt = build_gemini_prompt(
+        meal_nutrition=meal_nutrition,
+        user_profile=user_profile,
+        meal_type=meal_type,
+        include_health_conditions=include_health_conditions,
+        safety_alerts=safety_alerts
     )
-    
-    suggestions = list(rule_results.get("recommendations", []))
-    if not suggestions and rule_results.get("positive_feedback"):
-        suggestions = list(rule_results.get("positive_feedback", []))
-        
-    health_conds = list(rule_results.get("health_notices", []))
-    if not health_conds:
-        health_conds.append("No specific health considerations identified for this nutritional profile.")
-        
-    important_notices = list(rule_results.get("alerts", []))
-    important_notices.extend(rule_results.get("assumed_portions", []))
-    if reason:
-        important_notices.append(f"Notice: {reason}")
-    important_notices.append(rule_results.get("disclaimer", "Recommendations provide general nutritional guidance."))
-    
-    return {
-        "success": True,
-        "source": "rule_based_fallback",
-        "meal_assessment": meal_assessment,
-        "personalized_suggestions": suggestions if suggestions else ["Maintain balanced portion sizes consistent with your caloric goal."],
-        "health_considerations": health_conds,
-        "important_notices": important_notices,
-        "safety_alerts": rule_results.get("alerts", []),
-        "raw_text": "",
-        "model_used": "rule_based_engine"
-    }
 
-def parse_llm_response(raw_text: str) -> Optional[Dict[str, Any]]:
-    cleaned = raw_text.strip()
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]
-    elif cleaned.startswith("```"):
-        cleaned = cleaned[3:]
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]
-    cleaned = cleaned.strip()
-    
     try:
-        data = json.loads(cleaned)
-        if isinstance(data, dict):
-            return data
-    except Exception:
-        pass
-    return None
+        if client is None:
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=api_key)
+        else:
+            from google.genai import types
 
+        req_config = types.GenerateContentConfig(
+            system_instruction=GEMINI_SYSTEM_INSTRUCTION,
+            response_mime_type="application/json",
+            response_schema=DietaryRecommendationSchema,
+            temperature=gemini_conf.get("temperature", 0.2),
+            max_output_tokens=gemini_conf.get("max_output_tokens", 1200)
+        )
+
+        models_to_try = [model_name]
+        if client is None and model_name != "gemini-3.5-flash-lite":
+            models_to_try.append("gemini-3.5-flash-lite")
+
+        response = None
+        used_model = model_name
+        for m in models_to_try:
+            try:
+                response = client.models.generate_content(
+                    model=m,
+                    contents=prompt,
+                    config=req_config
+                )
+                used_model = m
+                break
+            except Exception as e:
+                err_text = str(e)
+                if ("NOT_FOUND" in err_text or "404" in err_text or "no longer available" in err_text.lower()) and len(models_to_try) > 1 and m != models_to_try[-1]:
+                    logger.warning("Configured model %s unavailable for user key, trying %s", m, models_to_try[-1])
+                    continue
+                raise e
+
+        raw_text = getattr(response, "text", "") or ""
+        
+        # Parse and validate response against Pydantic schema
+        try:
+            parsed = DietaryRecommendationSchema.model_validate_json(raw_text)
+        except Exception:
+            # Fallback direct json parse
+            data = json.loads(raw_text)
+            parsed = DietaryRecommendationSchema.model_validate(data)
+
+        # Append portion assumptions to limitations if not present
+        limitations = list(parsed.limitations)
+        for ap in assumed_portions:
+            if not any(ap in l for l in limitations):
+                limitations.append(ap)
+                
+        limitations.append("Educational Prototype Notice: Recommendations provide general dietary guidance and do not replace professional healthcare advice.")
+
+        return {
+            "success": True,
+            "source": "gemini",
+            "meal_assessment": parsed.meal_assessment,
+            "personalized_recommendations": parsed.personalized_recommendations,
+            "health_considerations": parsed.health_considerations,
+            "suggested_improvements": parsed.suggested_improvements,
+            "limitations": limitations,
+            "safety_alerts": safety_alerts,
+            "assumed_portions": assumed_portions,
+            "raw_text": raw_text,
+            "model_used": used_model
+        }
+
+    except Exception as exc:
+        err_type = type(exc).__name__
+        err_str = str(exc)
+        logger.error("Gemini recommendation request failed: %s", err_type)
+        
+        # User-friendly error message mapping without leaking sensitive credentials
+        if "RESOURCE_EXHAUSTED" in err_str or "429" in err_str or "Quota" in err_str:
+            user_msg = "Google Gemini rate limit reached (Free Tier quota). Please wait a moment and try again."
+        elif "NOT_FOUND" in err_str or "404" in err_str or "model" in err_str.lower():
+            user_msg = f"Configured Gemini model '{model_name}' is unavailable. Please check the GEMINI_MODEL setting."
+        elif "DEADLINE_EXCEEDED" in err_str or "timeout" in err_str.lower():
+            user_msg = "The request to Google Gemini timed out. Please verify network connectivity and try again."
+        elif "API_KEY_INVALID" in err_str or "unauthenticated" in err_str.lower():
+            user_msg = "Invalid Google Gemini API key. Please check your GEMINI_API_KEY credential."
+        else:
+            user_msg = f"Google Gemini is temporarily unavailable ({err_type}). Please try again."
+
+        return {
+            "success": False,
+            "source": "gemini",
+            "error_message": user_msg,
+            "meal_assessment": "",
+            "personalized_recommendations": [],
+            "health_considerations": [],
+            "suggested_improvements": [],
+            "limitations": [],
+            "safety_alerts": safety_alerts,
+            "assumed_portions": assumed_portions,
+            "model_used": model_name
+        }
+
+# Retain backward compatible alias
 def generate_llm_recommendation(
     meal_nutrition: Dict[str, Any],
     user_profile: Dict[str, Any],
     meal_type: str = "lunch",
     client: Optional[Any] = None
 ) -> Dict[str, Any]:
-    # Compute deterministic rule-based checks first for safety baseline
-    rule_results = recommendation_engine.generate_dietary_recommendations(
+    return generate_gemini_recommendation(
         meal_nutrition=meal_nutrition,
         user_profile=user_profile,
-        meal_type=meal_type
+        meal_type=meal_type,
+        include_health_conditions=True,
+        client=client
     )
-    safety_alerts = rule_results.get("alerts", [])
-    assumed_portions = rule_results.get("assumed_portions", [])
-    
-    llm_conf = config.get_llm_config()
-    api_key = llm_conf.get("api_key")
-    
-    if not api_key and client is None:
-        fallback = generate_fallback_recommendation(
-            meal_nutrition, user_profile, meal_type,
-            reason=""
-        )
-        return fallback
-        
-    user_prompt = build_user_prompt(meal_nutrition, user_profile, meal_type, rule_results)
-    
-    try:
-        if client is None:
-            from openai import OpenAI
-            client = OpenAI(
-                api_key=api_key,
-                timeout=llm_conf.get("timeout", 15)
-            )
-            
-        model_name = llm_conf.get("model", "gpt-4o-mini")
-        
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=llm_conf.get("temperature", 0.2),
-            max_tokens=llm_conf.get("max_tokens", 700),
-            timeout=llm_conf.get("timeout", 15)
-        )
-        
-        raw_content = response.choices[0].message.content or ""
-        parsed = parse_llm_response(raw_content)
-        
-        if not parsed:
-            # Fallback if parsing fails
-            fallback = generate_fallback_recommendation(
-                meal_nutrition, user_profile, meal_type,
-                reason="LLM response format could not be parsed into structured format. Displaying rule-based baseline."
-            )
-            fallback["raw_text"] = raw_content
-            return fallback
-            
-        # Ensure independent safety warnings are never suppressed
-        important_notices = parsed.get("important_notices", [])
-        if isinstance(important_notices, str):
-            important_notices = [important_notices]
-            
-        for alert in safety_alerts:
-            if not any(alert in item for item in important_notices):
-                important_notices.insert(0, alert)
-                
-        for port_note in assumed_portions:
-            if not any(port_note in item for item in important_notices):
-                important_notices.append(port_note)
-                
-        important_notices.append("General Guidance: Recommendations do not replace professional medical advice.")
-        
-        suggestions = parsed.get("personalized_suggestions", [])
-        if isinstance(suggestions, str):
-            suggestions = [suggestions]
-            
-        health_cons = parsed.get("health_considerations", [])
-        if isinstance(health_cons, str):
-            health_cons = [health_cons]
-            
-        return {
-            "success": True,
-            "source": "llm",
-            "meal_assessment": parsed.get("meal_assessment", "Nutritional evaluation completed."),
-            "personalized_suggestions": suggestions,
-            "health_considerations": health_cons,
-            "important_notices": important_notices,
-            "safety_alerts": safety_alerts,
-            "raw_text": raw_content,
-            "model_used": model_name
-        }
-        
-    except Exception as exc:
-        err_msg = str(exc)
-        logger.warning("LLM recommendation call encountered an error: %s", err_msg)
-        fallback = generate_fallback_recommendation(
-            meal_nutrition, user_profile, meal_type,
-            reason=f"LLM service unavailable ({type(exc).__name__}). Showing rule-based clinical recommendation."
-        )
-        fallback["error_message"] = err_msg
-        return fallback

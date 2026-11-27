@@ -5,7 +5,14 @@ MSc Data Science and Artificial Intelligence Project:
 
 ## Overview
 
-NutriVision is an integrated computer vision and clinical nutrition application. The system performs pixel-level semantic segmentation of food photography (FoodSeg103 ontology), maps detected ingredients to empirical USDA FNDDS 2021-2023 nutrient profiles, calculates anthropometric baselines (Mifflin-St Jeor REE, WHO BMI, AMDR macronutrient ranges), and generates personalized, context-aware dietary recommendations through Large Language Model (LLM) integration and deterministic rule-based clinical safety screening.
+NutriVision is an integrated computer vision and clinical nutrition application. The system performs pixel-level semantic segmentation of food photography (FoodSeg103 ontology), maps detected ingredients to empirical USDA FNDDS 2021-2023 nutrient profiles, calculates anthropometric baselines (Mifflin-St Jeor REE, WHO BMI, AMDR macronutrient ranges), and generates personalized, context-aware dietary recommendations powered purely by Google Gemini (Gemini 2.5 Flash) with independent deterministic safety and allergen screening.
+
+## System Architecture
+
+1. **Deep Learning Segmentation**: Dual deep convolutional models (DeepLabV3+ with ResNet-50 and U-Net with ResNet-34) trained on the FoodSeg103 ontology identify culinary items at pixel level.
+2. **USDA FNDDS Nutritional Mapping**: Segmented items are deterministically cross-referenced against USDA Food and Nutrient Database for Dietary Studies (FNDDS 2021-2023) records for empirical energy and nutrient calculation.
+3. **Deterministic Safety Screening**: Independent validation detects declared allergen conflicts, vegan/vegetarian dietary inconsistencies, assumed portion notices, and biometric safety warnings (e.g. underweight calorie restriction notices).
+4. **Purely LLM-Based Recommendations**: Personalized dietary suggestions, meal assessments, health considerations, and actionable improvements are generated exclusively by Google Gemini via the official `google-genai` Python SDK.
 
 ## System Requirements
 
@@ -35,8 +42,6 @@ streamlit run app.py
 
 Open your browser at `http://localhost:8501`.
 
-The application works immediately out-of-the-box using the built-in clinical recommendation engine without requiring any external configuration.
-
 ## Running the Automated Test Suite
 
 To run all automated unit tests:
@@ -45,8 +50,10 @@ To run all automated unit tests:
 pytest tests -v
 ```
 
-All 27 tests will execute, validating:
+The test suite validates:
 - Database schema migration and health condition persistence
 - Allergen synonym matching and safety notice preservation
 - Missing nutrient detection and assumed portion notices
-- LLM timeout, rate limit, and invalid JSON response handling
+- Gemini structured output parsing and Pydantic validation
+- Pure LLM error handling (missing API key, rate limits, timeouts, model unavailability) without rule fallbacks
+- Recommendation cache invalidation on meal and profile changes

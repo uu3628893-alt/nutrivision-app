@@ -265,86 +265,94 @@ with c_vis2:
         st.info("Configure a user profile to visualize target comparison bars.")
 
 # Personalized Recommendations
-st.markdown("### Personalized Clinical & Dietary Recommendations")
+st.markdown("### Personalised Dietary Recommendations")
 
 meal_cat = st.selectbox("Select Meal Occasion for Assessment:", ["Lunch", "Breakfast", "Dinner", "Snack"])
 
 if user_prof:
-    rule_results = recommendation_engine.generate_dietary_recommendations(meal_nutr, user_prof, meal_type=meal_cat.lower())
+    # Clear outdated recommendations if ingredients, portions, occasion, or profile changed
+    current_meal_sig = (
+        tuple((it.get('fdc_id'), it.get('grams')) for it in updated_items),
+        user_prof.get('updated_at', ''),
+        meal_cat
+    )
+    if st.session_state.get('recommendation_signature') != current_meal_sig:
+        st.session_state['gemini_recommendation_result'] = None
+        st.session_state['recommendation_signature'] = current_meal_sig
 
-    # Independent safety warnings always displayed upfront
-    for alert in rule_results.get('alerts', []):
-        st.error(alert)
+    # Deterministic safety screening executed independently
+    safety_results = recommendation_engine.validate_meal_safety(meal_nutr, user_prof, meal_type=meal_cat.lower())
+
+    if safety_results.get('alerts'):
+        st.markdown("#### Safety & Allergen Screening")
+        for alert in safety_results['alerts']:
+            st.error(alert)
+
+    if safety_results.get('assumed_portions'):
+        for notice in safety_results['assumed_portions']:
+            st.caption(f"- {notice}")
+
+    st.markdown("#### LLM Personalised Recommendations")
+
+    # Privacy check and consent for optional health considerations
+    health_conds = user_prof.get('health_conditions', '').strip()
+    if health_conds:
+        st.caption(f"Optional health considerations recorded in profile: **{health_conds}**")
+        share_health_consent = st.checkbox(
+            "Include voluntary health considerations in Gemini recommendation request",
+            value=True,
+            help="If checked, health considerations provide dietary context. Uncheck to exclude them."
+        )
+    else:
+        share_health_consent = False
 
     c_btn1, c_btn2 = st.columns([2, 1])
     with c_btn1:
         gen_llm_btn = st.button("Generate Personalised Dietary Recommendation", type="primary")
     with c_btn2:
-        if st.button("Reset Recommendations"):
-            st.session_state['llm_recommendation_result'] = None
+        if st.button("Clear Recommendation"):
+            st.session_state['gemini_recommendation_result'] = None
             st.rerun()
 
     if gen_llm_btn:
-        with st.spinner("Generating personalized dietary recommendations..."):
-            st.session_state['llm_recommendation_result'] = llm_recommendation.generate_llm_recommendation(
+        with st.spinner("Generating recommendations with Google Gemini..."):
+            st.session_state['gemini_recommendation_result'] = llm_recommendation.generate_gemini_recommendation(
                 meal_nutrition=meal_nutr,
                 user_profile=user_prof,
-                meal_type=meal_cat.lower()
+                meal_type=meal_cat.lower(),
+                include_health_conditions=share_health_consent
             )
 
-    rec_data = st.session_state.get('llm_recommendation_result')
+    rec_data = st.session_state.get('gemini_recommendation_result')
     if rec_data:
-        st.markdown("#### Meal Assessment")
-        st.write(rec_data.get("meal_assessment", ""))
+        if rec_data.get('success'):
+            st.caption(f"Powered by Google Gemini ({rec_data.get('model_used', 'gemini-2.5-flash')})")
 
-        st.markdown("#### Personalised Dietary Suggestions")
-        suggestions = rec_data.get("personalized_suggestions", [])
-        if isinstance(suggestions, list):
-            for s in suggestions:
-                st.info(s)
-        else:
-            st.info(suggestions)
+            st.markdown("#### Meal Assessment")
+            st.write(rec_data.get("meal_assessment", ""))
 
-        st.markdown("#### Health Considerations")
-        health_items = rec_data.get("health_considerations", [])
-        if isinstance(health_items, list):
-            for h in health_items:
-                st.warning(h)
-        else:
-            st.warning(health_items)
+            st.markdown("#### Personalised Dietary Recommendations")
+            for rec in rec_data.get("personalized_recommendations", []):
+                st.info(rec)
 
-        st.markdown("#### Important Notices")
-        notices = rec_data.get("important_notices", [])
-        if isinstance(notices, list):
-            for n in notices:
-                st.caption(f"- {n}")
+            if rec_data.get("health_considerations"):
+                st.markdown("#### Health Considerations")
+                for hc in rec_data.get("health_considerations", []):
+                    st.warning(hc)
+
+            if rec_data.get("suggested_improvements"):
+                st.markdown("#### Suggested Improvements")
+                for si in rec_data.get("suggested_improvements", []):
+                    st.write(f"- {si}")
+
+            if rec_data.get("limitations"):
+                st.markdown("#### Limitations & Uncertainties")
+                for lim in rec_data.get("limitations", []):
+                    st.caption(f"- {lim}")
         else:
-            st.caption(f"- {notices}")
+            st.error(rec_data.get("error_message", "Google Gemini is currently unavailable. Please try again."))
     else:
-        st.markdown("#### Meal Assessment")
-        cal_val = round(totals.get('calories_kcal', 0.0))
-        budget = rule_results.get('meal_calorie_budget', 0.0)
-        st.write(f"Estimated meal energy is {cal_val} kcal compared to your allocated {meal_cat.lower()} target of {round(budget)} kcal.")
-
-        st.markdown("#### Personalised Dietary Suggestions")
-        for rec in rule_results.get('recommendations', []):
-            st.warning(rec)
-        for pos in rule_results.get('positive_feedback', []):
-            st.success(pos)
-
-        st.markdown("#### Health Considerations")
-        if rule_results.get('health_notices'):
-            for hn in rule_results['health_notices']:
-                st.info(hn)
-        else:
-            st.write("No specific health conditions or clinical contraindications identified.")
-
-        st.markdown("#### Important Notices")
-        all_notices = list(rule_results.get('assumed_portions', []))
-        all_notices.append(rule_results.get('disclaimer', ''))
-        for n in all_notices:
-            if n:
-                st.caption(f"- {n}")
+        st.caption("Click 'Generate Personalised Dietary Recommendation' to generate AI dietary guidance for this meal.")
 else:
     st.info("Setup a user profile to generate personalised dietary recommendations.")
 

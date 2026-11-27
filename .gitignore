@@ -21,3 +21,7 @@ Web_app/reports/*
 # Windows batch files
 launch_live.bat
 
+# Streamlit secrets
+.streamlit/secrets.toml
+Web_app/.streamlit/secrets.toml
+
