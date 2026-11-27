@@ -294,6 +294,15 @@ if user_prof:
 
     st.markdown("#### LLM Personalised Recommendations")
 
+    gemini_key = config.get_gemini_api_key()
+    if not gemini_key:
+        with st.expander("Configure Gemini API Key for this Session", expanded=True):
+            st.caption("No API key detected in Streamlit Cloud secrets. Enter your key below to generate recommendations immediately:")
+            input_key = st.text_input("Enter Gemini API Key:", type="password", key="inline_gemini_key", help="Key remains in session memory only.")
+            if input_key:
+                st.session_state["gemini_api_key"] = input_key.strip()
+                st.success("API key stored for this session. You can now generate recommendations.")
+
     # Privacy check and consent for optional health considerations
     health_conds = user_prof.get('health_conditions', '').strip()
     if health_conds:

@@ -19,9 +19,16 @@ GEMINI_MAX_OUTPUT_TOKENS = 1200
 GEMINI_TEMPERATURE = 0.2
 
 def get_gemini_api_key() -> Optional[str]:
-    # Retrieve Gemini API key from Streamlit secrets, environment variables, or local secrets.toml
+    # Retrieve Gemini API key from session state, Streamlit secrets, environment variables, or local secrets.toml
     try:
         import streamlit as st
+        if hasattr(st, "session_state"):
+            if "gemini_api_key" in st.session_state and st.session_state["gemini_api_key"]:
+                return str(st.session_state["gemini_api_key"]).strip()
+            if "inline_gemini_key" in st.session_state and st.session_state["inline_gemini_key"]:
+                return str(st.session_state["inline_gemini_key"]).strip()
+            if "user_gemini_api_key" in st.session_state and st.session_state["user_gemini_api_key"]:
+                return str(st.session_state["user_gemini_api_key"]).strip()
         if hasattr(st, "secrets"):
             if "GEMINI_API_KEY" in st.secrets:
                 return str(st.secrets["GEMINI_API_KEY"]).strip()
