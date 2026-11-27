@@ -18,6 +18,7 @@ from src import visualizations
 from src import recommendation_engine
 from src import bmi_calculator
 from src import llm_recommendation
+from src import config
 
 st.set_page_config(page_title="Nutrition Analysis - NutriVision", layout="wide")
 
